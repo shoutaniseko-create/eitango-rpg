@@ -1,0 +1,149 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes"><title>英単語クエスト</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+body{margin:0;font-family:-apple-system,"Hiragino Sans",sans-serif;color:#fff;background:radial-gradient(circle at 50% 20%,#2b2f6b,#0c0d24);min-height:100vh;overflow-x:hidden}
+.scr{display:none;max-width:900px;margin:0 auto;padding:16px}.scr.on{display:block}
+h1{text-align:center;font-size:40px;margin:16px 0;text-shadow:0 0 12px #8af,0 3px 0 #224}
+.card{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:18px;padding:16px;margin:12px 0}
+button{font:inherit;color:#fff;border:none;border-radius:16px;padding:16px;font-size:20px;font-weight:bold;background:linear-gradient(#5a7cff,#3346c9);box-shadow:0 5px 0 #1d2a80;cursor:pointer}
+button:active{transform:translateY(4px);box-shadow:0 1px 0 #1d2a80}
+button.sec{background:linear-gradient(#666a8a,#44476a);box-shadow:0 5px 0 #2a2c44}
+button.red{background:linear-gradient(#ff6a6a,#c93333);box-shadow:0 5px 0 #801d1d}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.row>*{flex:1}
+select{font-size:22px;padding:10px;border-radius:12px;width:100%}
+.stat{font-size:18px;line-height:1.7}
+#arena{position:relative;height:300px;border-radius:18px;overflow:hidden;background:linear-gradient(#1a1c48,#3a2a5a 70%,#22183a)}
+#cv{width:100%;height:100%;display:block}
+.bar{height:16px;background:#311;border-radius:8px;overflow:hidden;border:2px solid #000}.bar>i{display:block;height:100%;transition:width .3s}
+#q{font-size:44px;text-align:center;font-weight:bold;margin:10px 0;letter-spacing:1px}
+#ch{display:grid;grid-template-columns:1fr 1fr;gap:12px}#ch button{min-height:84px;font-size:22px}
+#ch button.ok{background:linear-gradient(#4c4,#282)!important}#ch button.ng{background:linear-gradient(#e44,#922)!important}
+#fb{display:none}.ex{color:#cde;font-size:18px}.core{color:#fd8;font-size:17px;margin-top:6px}
+.hud{display:flex;justify-content:space-between;font-size:17px;margin:6px 0}
+#combo{position:absolute;right:12px;top:10px;font-size:28px;font-weight:900;color:#ff4;text-shadow:0 0 8px #f80}
+.shake{animation:sh .35s}@keyframes sh{20%{transform:translate(-8px,4px)}40%{transform:translate(8px,-4px)}60%{transform:translate(-6px,2px)}80%{transform:translate(6px,0)}}
+#flash{position:fixed;inset:0;background:#f00;opacity:0;pointer-events:none;transition:opacity .3s}
+</style></head><body>
+<div id="flash"></div>
+<div id="title" class="scr on">
+ <h1>⚔️ 英単語クエスト</h1>
+ <div class="card stat" id="pstat"></div>
+ <div class="card">
+  <div style="font-size:18px;margin-bottom:8px">出題範囲（Day）</div>
+  <div class="row"><select id="d1"></select><span style="flex:0">〜</span><select id="d2"></select></div>
+  <div class="row" style="margin-top:12px"><button class="sec" id="latest">最新Dayだけ</button><button class="sec" id="all">全範囲</button></div>
+  <div id="info" style="margin-top:8px;color:#bbd"></div>
+ </div>
+ <div class="row"><button id="go">冒険に出る ▶</button></div>
+ <div class="row" style="margin-top:12px"><button class="red" id="rev">復習モード（<span id="nmiss">0</span>語）</button></div>
+</div>
+<div id="battle" class="scr">
+ <div class="hud"><span id="stg"></span><span id="ehpt"></span></div>
+ <div class="bar"><i id="ehp" style="background:linear-gradient(90deg,#f44,#f90)"></i></div>
+ <div id="arena" style="margin-top:8px"><canvas id="cv"></canvas><div id="combo"></div></div>
+ <div class="hud"><span id="plv"></span><span id="phpt"></span></div>
+ <div class="bar"><i id="php" style="background:linear-gradient(90deg,#4f4,#2c8)"></i></div>
+ <div id="q"></div>
+ <div id="ch"></div>
+ <div id="fb" class="card"><div id="fbt" style="font-size:24px;font-weight:bold"></div><div class="ex" id="fbe"></div><div class="core" id="fbc"></div>
+  <div class="row" style="margin-top:12px"><button id="next">次へ ▶</button></div></div>
+ <div class="row" style="margin-top:14px"><button class="sec" id="quit">にげる</button></div>
+</div>
+<div id="result" class="scr"><h1 id="rt"></h1><div class="card stat" id="rs"></div><div class="row"><button id="back">タイトルへ</button></div></div>
+<script>
+const $=id=>document.getElementById(id);
+let W=[],DAYS=[];
+const S=JSON.parse(localStorage.vq||'{"lv":1,"exp":0,"stage":1,"best":0}');
+let MISS=JSON.parse(localStorage.vqmiss||'{}');
+const save=()=>{localStorage.vq=JSON.stringify(S);localStorage.vqmiss=JSON.stringify(MISS)};
+const needExp=l=>20+l*15, maxHP=()=>80+S.lv*12, atk=()=>10+S.lv*3;
+const ENEMIES=[["スライム","#4c8"],["コウモリ","#a6f"],["ゴブリン","#8a4"],["ゴースト","#ccf"],["オーク","#a75"],["ウルフ","#99a"],["ゴーレム","#987"],["魔導士","#c4c"]];
+const BOSSES=[["ドラゴン","#e33"],["魔王","#606"],["クラーケン","#38c"],["リッチ","#bdb"]];
+// audio
+let AC;function snd(type){try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();const t=AC.currentTime;
+ const tone=(f,d,w='square',v=.15,s=0,f2)=>{const o=AC.createOscillator(),g=AC.createGain();o.type=w;o.frequency.setValueAtTime(f,t+s);if(f2)o.frequency.exponentialRampToValueAtTime(f2,t+s+d);g.gain.setValueAtTime(v,t+s);g.gain.exponentialRampToValueAtTime(.001,t+s+d);o.connect(g).connect(AC.destination);o.start(t+s);o.stop(t+s+d)};
+ if(type=='hit'){tone(880,.08);tone(1320,.15,'square',.12,.06);tone(200,.2,'sawtooth',.1,0,60)}
+ if(type=='crit'){[660,880,1100,1320].forEach((f,i)=>tone(f,.12,'square',.12,i*.05))}
+ if(type=='hurt'){tone(160,.4,'sawtooth',.2,0,50)}
+ if(type=='win'){[523,659,784,1047].forEach((f,i)=>tone(f,.25,'triangle',.18,i*.12))}
+ if(type=='lose'){[400,300,200,120].forEach((f,i)=>tone(f,.3,'triangle',.18,i*.2))}
+ if(type=='lv'){[784,988,1175,1568].forEach((f,i)=>tone(f,.2,'square',.12,i*.08))}
+}catch(e){}}
+// canvas
+const cv=$('cv'),cx=cv.getContext('2d');let parts=[],floats=[],eShake=0,eFlash=0,eDead=0,enemy=null,tick=0;
+function rs(){cv.width=cv.clientWidth*devicePixelRatio;cv.height=cv.clientHeight*devicePixelRatio}addEventListener('resize',rs);
+function boom(x,y,c,n){for(let i=0;i<n;i++){const a=Math.random()*6.28,s=2+Math.random()*7;parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:40,c})}}
+function draw(){requestAnimationFrame(draw);if(!$('battle').classList.contains('on'))return;tick++;
+ const w=cv.width,h=cv.height,d=devicePixelRatio;cx.clearRect(0,0,w,h);
+ cx.fillStyle='#fff';for(let i=0;i<40;i++){cx.globalAlpha=.3+.3*Math.sin(tick/20+i);cx.fillRect((i*137%w),(i*71%(h*.6)),2*d,2*d)}cx.globalAlpha=1;
+ cx.fillStyle='#2a1d40';cx.fillRect(0,h*.78,w,h);
+ if(enemy){const sc=(enemy.boss?1.5:1)*d*(1-eDead),bx=w/2+(eShake?(Math.random()-.5)*20*d:0),by=h*.5+Math.sin(tick/15)*6*d;if(eShake)eShake--;
+  cx.save();cx.translate(bx,by);cx.scale(sc,sc);cx.globalAlpha=1-eDead;
+  cx.fillStyle='rgba(0,0,0,.35)';cx.beginPath();cx.ellipse(0,70,60,12,0,0,7);cx.fill();
+  cx.fillStyle=eFlash>0?'#fff':enemy.c;if(eFlash>0)eFlash--;
+  cx.beginPath();cx.moveTo(-60,60);cx.quadraticCurveTo(-70,-60,0,-70);cx.quadraticCurveTo(70,-60,60,60);cx.closePath();cx.fill();
+  if(enemy.boss){cx.fillStyle='#fd4';cx.beginPath();cx.moveTo(-35,-62);cx.lineTo(-25,-95);cx.lineTo(-10,-68);cx.lineTo(0,-100);cx.lineTo(10,-68);cx.lineTo(25,-95);cx.lineTo(35,-62);cx.fill()}
+  cx.fillStyle='#fff';cx.beginPath();cx.arc(-22,-15,13,0,7);cx.arc(22,-15,13,0,7);cx.fill();
+  cx.fillStyle=enemy.boss?'#f00':'#111';cx.beginPath();cx.arc(-20,-13,6,0,7);cx.arc(24,-13,6,0,7);cx.fill();
+  cx.strokeStyle='#111';cx.lineWidth=4;cx.beginPath();cx.arc(0,25,18,0.2,2.9);cx.stroke();cx.restore();
+  if(eDead>0&&eDead<1)eDead=Math.min(1,eDead+.03);
+  cx.fillStyle='#fff';cx.font=`bold ${16*d}px sans-serif`;cx.textAlign='center';cx.fillText(enemy.name,w/2,h*.95)}
+ parts=parts.filter(p=>p.l-->0);parts.forEach(p=>{p.x+=p.vx*d;p.y+=p.vy*d;p.vy+=.2;cx.globalAlpha=p.l/40;cx.fillStyle=p.c;cx.fillRect(p.x,p.y,5*d,5*d)});cx.globalAlpha=1;
+ floats=floats.filter(f=>f.l-->0);floats.forEach(f=>{f.y-=1.2*d;cx.globalAlpha=Math.min(1,f.l/20);cx.fillStyle=f.c;cx.font=`900 ${f.s*d}px sans-serif`;cx.textAlign='center';cx.strokeStyle='#000';cx.lineWidth=4*d;cx.strokeText(f.t,f.x,f.y);cx.fillText(f.t,f.x,f.y)});cx.globalAlpha=1;
+ if(slash>0){slash--;cx.strokeStyle=`rgba(255,255,200,${slash/10})`;cx.lineWidth=8*d;cx.beginPath();cx.moveTo(w*.3,h*.2);cx.lineTo(w*.7,h*.75);cx.stroke()}
+}let slash=0;requestAnimationFrame(draw);
+// game
+let pool=[],hp,ehp,emax,combo,cur,review=false,stats,answered,inBoss,wave;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a}
+function title(){show('title');const n=needExp(S.lv);
+ $('pstat').innerHTML=`🧙 勇者 Lv.<b>${S.lv}</b>　EXP ${S.exp}/${n}<br>❤️ 最大HP ${maxHP()}　⚔️ 攻撃 ${atk()}<br>🏰 到達ステージ ${S.stage}　🏆 最高コンボ ${S.best}`;
+ $('nmiss').textContent=Object.keys(MISS).length}
+function show(id){document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id==id));if(id=='battle')rs()}
+async function load(){const r=await fetch('words.json?'+Date.now());const d=await r.json();W=d.words;DAYS=d.days;
+ const o=DAYS.map(x=>`<option value="${x}">Day ${x}</option>`).join('');$('d1').innerHTML=o;$('d2').innerHTML=o;
+ const sv=JSON.parse(localStorage.vqrange||'null');$('d1').value=sv?sv[0]:DAYS[0];$('d2').value=sv?Math.min(sv[1],DAYS.at(-1)):DAYS.at(-1);
+ $('info').textContent=`全${d.total}語・最新 Day ${DAYS.at(-1)}（更新: ${d.updated||'-'}）`;title()}
+$('latest').onclick=()=>{$('d1').value=$('d2').value=DAYS.at(-1)};$('all').onclick=()=>{$('d1').value=DAYS[0];$('d2').value=DAYS.at(-1)};
+function start(rv){review=rv;let a=+$('d1').value,b=+$('d2').value;if(a>b)[a,b]=[b,a];localStorage.vqrange=JSON.stringify([a,b]);
+ pool=rv?W.filter(w=>MISS[w.word]):W.filter(w=>w.day>=a&&w.day<=b);
+ if(!pool.length){alert(rv?'復習する単語はまだないよ！':'単語がありません');return}
+ snd();hp=maxHP();combo=0;wave=0;stats={ok:0,ng:0,exp:0};show('battle');nextEnemy()}
+function nextEnemy(){wave++;inBoss=review?false:wave%4==0;const st=S.stage;
+ const [name,c]=inBoss?BOSSES[(st-1)%BOSSES.length]:ENEMIES[(Math.random()*ENEMIES.length)|0];
+ emax=Math.round((inBoss?120:40)*(1+st*.15));ehp=emax;enemy={name:(inBoss?'👑 ':'')+name,c,boss:inBoss};eDead=0;
+ $('stg').textContent=review?`復習モード 第${wave}戦`:`ステージ ${st}　第${wave}戦${inBoss?'（ボス！）':''}`;ask()}
+function ask(){answered=false;$('fb').style.display='none';
+ const list=review?pool:pool;cur=list[(Math.random()*list.length)|0];
+ const ds=shuffle(W.filter(w=>w.meaning!==cur.meaning)).slice(0,30);const opts=[cur.meaning];
+ for(const d of ds){if(opts.length>=4)break;if(!opts.includes(d.meaning))opts.push(d.meaning)}shuffle(opts);
+ $('q').textContent=cur.word;$('ch').innerHTML='';
+ opts.forEach(m=>{const b=document.createElement('button');b.textContent=m;b.onclick=()=>pick(b,m);$('ch').appendChild(b)});hud()}
+function hud(){$('ehp').style.width=(ehp/emax*100)+'%';$('ehpt').textContent=`敵HP ${Math.max(0,ehp)}/${emax}`;
+ $('php').style.width=(hp/maxHP()*100)+'%';$('plv').textContent=`Lv.${S.lv} 勇者`;$('phpt').textContent=`HP ${Math.max(0,hp)}/${maxHP()}`;
+ $('combo').textContent=combo>1?combo+' COMBO!':''}
+function pick(b,m){if(answered)return;answered=true;const ok=m===cur.meaning;const w=cv.width,h=cv.height;
+ [...$('ch').children].forEach(x=>{if(x.textContent===cur.meaning)x.classList.add('ok');else if(x===b)x.classList.add('ng')});
+ if(ok){combo++;stats.ok++;S.best=Math.max(S.best,combo);const crit=Math.random()<.15+combo*.02;
+  let dmg=Math.round(atk()*(1+Math.min(combo-1,10)*.2)*(crit?2:1)*(.9+Math.random()*.2));ehp-=dmg;
+  if(review&&MISS[cur.word]){MISS[cur.word]--;if(MISS[cur.word]<=0)delete MISS[cur.word]}
+  slash=10;eShake=12;eFlash=6;boom(w/2,h/2,crit?'#ff4':'#fa6',crit?60:25);floats.push({t:(crit?'会心！':'')+dmg,x:w/2,y:h*.35,l:50,c:crit?'#ff4':'#fff',s:crit?40:32});snd(crit?'crit':'hit');
+  $('fbt').innerHTML=`⭕ 正解！ <b>${cur.word}</b> ＝ ${cur.meaning}`}
+ else{combo=0;stats.ng++;MISS[cur.word]=2;const dmg=Math.round((inBoss?18:10)*(1+S.stage*.1));hp-=dmg;
+  document.body.classList.remove('shake');void document.body.offsetWidth;document.body.classList.add('shake');$('flash').style.opacity=.4;setTimeout(()=>$('flash').style.opacity=0,150);
+  floats.push({t:'-'+dmg,x:w/2,y:h*.85,l:50,c:'#f55',s:32});snd('hurt');
+  $('fbt').innerHTML=`❌ 正解は <b>${cur.word}</b> ＝ <span style="color:#8f8">${cur.meaning}</span>`}
+ const ex=cur.example||{};$('fbe').innerHTML=ex.en?`📖 ${ex.en}<br>　${ex.ja||''}`:'';$('fbc').textContent=cur.core?'💡 '+cur.core:'';
+ $('fb').style.display='block';save();hud()}
+function gainExp(n){stats.exp+=n;S.exp+=n;let up=false;while(S.exp>=needExp(S.lv)){S.exp-=needExp(S.lv);S.lv++;up=true}if(up){snd('lv');floats.push({t:'LEVEL UP! Lv.'+S.lv,x:cv.width/2,y:cv.height*.3,l:80,c:'#4ff',s:30});hp=maxHP()}save()}
+$('next').onclick=()=>{if(hp<=0){end(false);return}
+ if(ehp<=0){eDead=.01;snd('win');gainExp(inBoss?40+S.stage*5:8+S.stage*2);
+  if(inBoss){S.stage++;save();setTimeout(()=>end(true),900);return}
+  if(review&&!pool.some(w=>MISS[w.word])){setTimeout(()=>end(true),900);return}
+  hp=Math.min(maxHP(),hp+10);setTimeout(nextEnemy,900);$('fb').style.display='none';return}ask()};
+function end(win){show('result');snd(win?'win':'lose');$('rt').textContent=win?(review?'復習クリア！':'🎉 ボス撃破！'):'💀 やられた…';
+ $('rs').innerHTML=`正解 ${stats.ok}　ミス ${stats.ng}<br>獲得EXP ${stats.exp}<br>Lv.${S.lv}　次のステージ: ${S.stage}<br>復習リスト: ${Object.keys(MISS).length}語`}
+$('go').onclick=()=>start(false);$('rev').onclick=()=>start(true);$('quit').onclick=title;$('back').onclick=title;
+load();
+</script></body></html>
