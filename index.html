@@ -23,7 +23,7 @@ html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;font-f
 .mi small{margin-left:auto;padding-left:.8em;color:#cde;font-size:.75em;white-space:nowrap}.mi.dis{color:#777}.mi:active{background:#335}
 .menu.yn{right:6%;bottom:34%;top:auto;min-width:18%}
 .menu.fmenu{left:4%;right:auto;top:4%;min-width:40%}
-.menu.bcmd{left:3%;right:51.5%;top:auto;bottom:3%;min-width:0;font-size:1.1em}
+.menu.bcmd{left:3%;right:51.5%;top:auto;bottom:3%;min-width:0;font-size:1em;white-space:nowrap}
 .menu.bsub,.menu.items,.menu.shop,.menu.set,.menu.days,.menu.pmenu{right:3%;top:4%;max-width:62%}.menu.shop{max-height:62%}
 .menu.slots{left:5%;right:5%;top:22%}.menu.slots .mi small{white-space:normal}
 .menu.tmenu{left:34%;right:34%;top:auto;bottom:10%;min-width:0;text-align:center;font-size:1.2em}
@@ -57,11 +57,20 @@ html,body{margin:0;height:100%;background:#000;color:#fff;overflow:hidden;font-f
 #start{position:fixed;inset:0;z-index:100;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:24px;cursor:pointer;text-align:center}
 #start b{font-size:40px;color:#ffe060;margin-bottom:12px}#start span{animation:bl 1s steps(2) infinite;margin-top:24px}
 #ver{position:fixed;bottom:4px;left:50%;transform:translateX(-50%);font-size:11px;color:#888;z-index:101;pointer-events:none}
+.qs{font-size:1.1em;line-height:1.5}.qs u{color:#fd6;text-decoration:none;border-bottom:2px solid #fd6}.qsj{font-size:.8em;color:#aab}
+.tbar{height:.5em;background:#333;border-radius:4px;overflow:hidden;margin:.2em 10%}.tbar i{display:block;height:100%;width:100%;background:#4f8;transition:width .1s linear}
+#bgrp{right:3%;top:3%;font-size:.75em;line-height:1.35;max-width:40%;text-align:right;color:#cde}#bgrp b{color:#fd6}#bgrp small{color:#999}
+.dex{inset:2%;z-index:40;display:flex;flex-direction:column;padding:.5em}.dh{display:flex;align-items:center;gap:.8em;border-bottom:2px solid #fff;padding-bottom:.3em}.dh span{font-size:.8em;color:#cde;flex:1}
+.dh button,.dexd button{font:inherit;color:#fff;background:#228;border:2px solid #fff;border-radius:6px;padding:.2em .8em}.dr{font-size:.7em;color:#888;margin:.2em 0}.dr .got{color:#fd6}
+.dg{flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(auto-fill,minmax(13%,1fr));gap:.3em;-webkit-overflow-scrolling:touch}.dc{background:#112;border:1px solid #446;border-radius:6px;text-align:center;font-size:.6em;padding:.2em;cursor:pointer}
+.dc canvas{display:block;aspect-ratio:1}.dc.un{color:#555}.dc.boss{border-color:#c84}.dc.rare{border-color:#8cf}
+.dexd{left:8%;right:8%;top:8%;z-index:45}.dt{border-bottom:2px solid #fff;margin-bottom:.3em}.dd{display:flex;gap:.8em}.dimg{width:30%;background:#223;border-radius:8px}.dinfo{flex:1;font-size:.85em;line-height:1.5}.ddesc{margin-top:.4em;font-size:.9em;color:#eed}
+.mbar{height:.5em;background:#333;border-radius:4px;overflow:hidden}.mbar i{display:block;height:100%;background:#fd6}
 @media (hover:hover) and (pointer:fine){#dpad,.btn{opacity:.35}}
 </style></head><body>
 <div id="wrap"><div id="box"><canvas id="cv"></canvas><div id="hud" style="display:none"></div><div id="place"></div><div id="ui"></div><div id="fade"></div></div></div>
 <div id="ctrl"><div id="dpad"><i class="u"></i><i class="d"></i><i class="l"></i><i class="r"></i></div><div class="btn" id="ba">A</div><div class="btn" id="bb">B</div></div>
 <div id="start"><b>英単語クエスト</b>〜ことばの勇者〜<span>▶ タップしてスタート</span><small style="margin-top:30px;font-size:14px;color:#aaa">十字キーで移動／A：しらべる・はなす・けってい／B：メニュー・キャンセル<br>キーボード：矢印キー・Z(A)・X(B)<br><a href="classic.html" style="color:#8af" onclick="event.stopPropagation()">前のバトル版（クラシック）はこちら</a></small></div>
 <div id="ver"></div>
-<script src="js/audio.js"></script><script src="js/data.js"></script><script src="js/engine.js"></script><script src="js/battle.js"></script><script src="js/main.js"></script>
+<script src="js/audio.js"></script><script src="js/data.js"></script><script src="js/data2.js"></script><script src="js/engine.js"></script><script src="js/battle.js"></script><script src="js/main.js"></script>
 </body></html>

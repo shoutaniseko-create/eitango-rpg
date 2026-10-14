@@ -16,7 +16,7 @@ const Game={S:null,state:'title',map:null,mapId:'',grid:null,npcs:[],P:{x:0,y:0,
   if(!up)return;const st=this.petStage();if(st>st0){Audio8.jingle('item');await this.log(st0==0?`タマゴが　われて…　${P.name}が　うまれた！`:`${P.name}は　${PET_STAGES[st][1]}に　しんかした！`)}else await this.log(`${P.name}は　レベル${P.lv}に　なった！`);
   const sk=this.petSkills();if(sk.length>sk0)await this.log(`${P.name}は　${sk[sk.length-1].n}を　おぼえた！`)},
 };
-function newSave(){return{v:1,name:'ゆうしゃ',lv:1,exp:0,hp:37,mp:11,gold:30,food:0,wpn:0,arm:0,inv:{herb:3},flags:{},opened:{},map:'village',x:4,y:4,dir:1,church:{map:'village',x:18,y:11},pet:{name:'ポチ',lv:1,exp:0},stats:{ok:0,ng:0,battles:0},time:0}}
+function newSave(){return{v:1,name:'ゆうしゃ',lv:1,exp:0,hp:37,mp:11,gold:30,food:0,wpn:0,arm:0,inv:{herb:3},flags:{},opened:{},map:'village',x:4,y:4,dir:1,church:{map:'village',x:18,y:11},pet:{name:'ポチ',lv:1,exp:0},stats:{ok:0,ng:0,battles:0},time:0,dex:{},wstat:{},dexRw:[]}}
 // ---- Map loading ----
 function loadMap(id,digit,pos){const m=MAPS[id];Game.map=m;Game.mapId=id;const rows=m.rows,H=rows.length,W=rows[0].length;
  const grid=rows.map(r=>[...r]);Game.npcs=[];m.chestPos=[];m.boss&&(m.bossPos=null);let ci=0;
@@ -53,10 +53,10 @@ function fieldUpdate(dt){const P=Game.P;Game.t+=dt;if(Game.S)Game.S.time+=dt;
  if(blocked(nx,ny)){bumpT-=dt;if(bumpT<=0){bumpT=.3;Audio8.se('bump');const g=tileAt(nx,ny)=='g'?gateAt(nx,ny):null;if(g||(Game.map.bossPos&&Game.map.bossPos.x==nx&&Game.map.bossPos.y==ny)||Game.map.chestPos.some(p=>p.x==nx&&p.y==ny)||tileAt(nx,ny)=='k')interact()}return}
  bumpT=0;Game.trail.unshift({x:P.x,y:P.y});Game.trail.length=3;P.tx=nx;P.ty=ny;P.mv=1;P.fr^=1;Game.onWarp=false}
 async function arrive(){const P=Game.P,c=tileAt(P.x,P.y);Game.steps++;
- if(c>='0'&&c<='9'&&!Game.onWarp){const l=Game.map.links[c];if(l){Game.busy=true;Audio8.se(Game.map.style=='world'?'door':'stairs');await fade(true,200);loadMap(l[0],l[1]);await fade(false,200);Game.busy=false;return}}
+ if(c>='0'&&c<='9'&&!Game.onWarp){const l=Game.map.links[c];if(l&&l[3]&&!Game.S.flags[l[3]]){Game.busy=true;await UI.say(['ふかい　あなが　ある……','ふしぎな　ちからに　はじかれて　はいれない。','（魔王を　たおすと　はいれるように　なるらしい）']);Game.busy=false;Game.onWarp=true;return}if(l){Game.busy=true;Audio8.se(Game.map.style=='world'?'door':'stairs');await fade(true,200);loadMap(l[0],l[1]);await fade(false,200);Game.busy=false;return}}
  // encounter
  const m=Game.map;if(!m.enc||Game.safe-->0)return;let rate=m.rate;if(c=='T')rate*=.7;if(c==':')rate*=1.6;if(Math.random()*rate<1){const z=m.enc=='zone'?zoneAt(P.x,P.y):m.enc;const pool=ZONES[z];
-  const n=Math.random()<.5?1:Math.random()<.7?2:3;const ids=[];for(let i=0;i<n;i++)ids.push(pool[(Math.random()*pool.length)|0]);await encounter(ids)}}
+  const n=Math.random()<.5?1:Math.random()<.7?2:3;const ids=[];for(let i=0;i<n;i++)ids.push(pool[(Math.random()*pool.length)|0]);const rr=RARES[z];if(rr&&Math.random()<.04)ids.splice(0,ids.length,rr[(Math.random()*rr.length)|0]);await encounter(ids)}}
 async function encounter(ids,opt={}){Game.busy=true;Audio8.stop();Audio8.se('encounter');for(let i=0;i<3;i++){await fade(true,60);await fade(false,60)}
  Game.state='battle';const bg=Game.map.style=='world'?'world':Game.map.style;const r=await runBattle(ids,{...opt,bg});Game.state='field';Game.safe=5;
  if(r=='lose'){await defeat();Game.busy=false;return r}Audio8.play(Game.map.bgm);Game.busy=false;return r}
@@ -105,7 +105,7 @@ async function interact2(){const S=Game.S;let[x,y]=facing();let c=tileAt(x,y);
  const bp=Game.map.bossPos;if(bp&&bp.x==x&&bp.y==y&&!S.flags[Game.map.bossFlag])return bossEvent();
  const here=tileAt(Game.P.x,Game.P.y);if(c==null||c=='#')return UI.say(['なにも　ない。'])}
 async function bossEvent(){const m=Game.map,b=BOSSES[m.boss],S=Game.S;await UI.say(b.lines.map(l=>`${b.n}「${l}`));
- const r=await encounter([m.boss],{boss:true});if(r!='win')return;S.flags[m.bossFlag]=1;if(m.boss=='b1')S.inv.stone1=1;if(m.boss=='b2')S.inv.stone2=1;
+ const r=await encounter([m.boss],{boss:true});if(r!='win')return;S.flags[m.bossFlag]=1;if(m.boss=='b1')S.inv.stone1=1;if(m.boss=='b2')S.inv.stone2=1;if(m.boss=='b5')S.gold+=3000;
  await SCRIPTS['boss_'+m.boss](G);if(b.final)await ending()}
 // ---- Town services ----
 async function shop(list){const S=Game.S;await UI.say(['いらっしゃい！　なにを　かうかね？']);
@@ -125,8 +125,8 @@ function slotSum(sl){const s=LS.get('eiq_slot'+sl,null);if(!s)return'－ から�
 async function pickSlot(title,save){const k=await UI.menu([1,2,3].map(i=>({t:`ぼうけんのしょ${i}`,sub:slotSum(i),dis:!save&&!LS.get('eiq_slot'+i,null)})),{title,cls:'slots'});return k<0?0:k+1}
 // ---- Field menu ----
 async function fieldMenu(){if(Game.busy||Game.P.mv)return;Game.busy=true;try{await fieldMenu2()}finally{Game.busy=false}}
-async function fieldMenu2(){const S=Game.S;while(true){const k=await UI.menu([{t:'つよさ'},{t:'じゅもん'},{t:'どうぐ'},{t:'あいぼう'},{t:'ふくしゅう'},{t:'せってい'},{t:'きろく'},{t:'とじる'}],{cols:true,cls:'fmenu',title:'コマンド'});
- if(k<0||k==7)return;
+async function fieldMenu2(){const S=Game.S;while(true){let k=await UI.menu([{t:'つよさ'},{t:'じゅもん'},{t:'どうぐ'},{t:'あいぼう'},{t:'ふくしゅう'},{t:'ずかん'},{t:'せってい'},{t:'きろく'},{t:'とじる'}],{cols:true,cls:'fmenu',title:'コマンド'});
+ if(k<0||k==8)return;if(k==5){await dexMenu();continue}if(k>5)k--;
  if(k==0){const P=S.pet;await UI.say([`${S.name}　Lv${S.lv}\nHP ${S.hp}/${Game.maxHP()}　MP ${S.mp}/${Game.maxMP()}\nこうげき ${Game.atk()}　まもり ${Game.def()}`,`けいけんち ${S.exp}/${Game.needExp(S.lv)}　ゴールド ${S.gold}\nぶき: ${WEAPONS[S.wpn].n}\nよろい: ${ARMORS[S.arm].n}`,`正解 ${S.stats.ok}　ミス ${S.stats.ng}　せんとう ${S.stats.battles}\nだいじな もの: ${Object.keys(S.inv).filter(i=>ITEMS[i]?.key&&S.inv[i]).map(i=>ITEMS[i].n).join('、')||'なし'}`])}
  if(k==1){const sp=Game.spells();const j=await UI.menu(sp.map(s=>({t:s.n,sub:`MP${s.mp} ${s.d}`,dis:s.type!='heal'||S.mp<s.mp})),{title:'じゅもん'});if(j>=0){const s=sp[j];S.mp-=s.mp;const h=Math.min(Math.round(s.pow*(1+S.lv*.02)),Game.maxHP()-S.hp);S.hp+=h;Audio8.se('heal');await UI.say([`${s.n}を　となえた！　HPが　${h}　かいふくした！`])}}
  if(k==2)await itemMenu();
@@ -148,8 +148,8 @@ async function petMenu(){const S=Game.S,P=S.pet;if(!Game.hasPet())return UI.say(
   if(k<2){const n=k?5:1;S.food-=5*n;Audio8.se('ok');await UI.say([`${P.name}は　おいしそうに　たべた！`]);await Game.petExp(10*n)}
   if(k==2){await UI.say([PET_SKILLS.map(s=>`${P.lv>=s.lv?'✅':'🔒'} ${s.n}（Lv${s.lv}）${s.d}`).join('\n')])}
   if(k==3){const n=prompt('あいぼうの　なまえ（10もじまで）',P.name);if(n&&n.trim())P.name=n.trim().slice(0,10)}}}
-async function settings(){while(true){const[a,b]=Game.range();const k=await UI.menu([{t:'問題モード',sub:Game.mode=='t'?'⌨️ タイピング（ダメージ1.3倍）':'4択'},{t:'出題Day（はじめ）',sub:'Day '+a},{t:'出題Day（おわり）',sub:'Day '+b},{t:'さいしんDayだけ'},{t:'ぜんぶのDay'},{t:'BGM',sub:Audio8.muted?'OFF':'ON'},{t:'もどる'}],{title:`せってい（${Game.pool().length}語）`,cls:'set'});
- if(k<0||k==6)return;if(k==0)Game.mode=Game.mode=='t'?'4':'t';
+async function settings(){while(true){const[a,b]=Game.range();const k=await UI.menu([{t:'問題モード',sub:{t:'⌨️ タイピング（ダメージ1.3倍）',h:'🔥ハード（ヒントなし・制限時間・報酬1.5倍）'}[Game.mode]||'4択'},{t:'出題Day（はじめ）',sub:'Day '+a},{t:'出題Day（おわり）',sub:'Day '+b},{t:'さいしんDayだけ'},{t:'ぜんぶのDay'},{t:'BGM',sub:Audio8.muted?'OFF':'ON'},{t:'もどる'}],{title:`せってい（${Game.pool().length}語）`,cls:'set'});
+ if(k<0||k==6)return;if(k==0)Game.mode={'4':'t',t:'h',h:'4'}[Game.mode]||'4';
  if(k==1||k==2){const j=await UI.menu(DAYS.map(d=>({t:'Day '+d,sub:WORDS.filter(w=>w.day==d).length+'語'})),{title:'Dayをえらぶ',cls:'days',start:Math.max(0,DAYS.indexOf(k==1?a:b))});if(j>=0){const r=[a,b];r[k-1]=DAYS[j];LS.set('eiq_range',r)}}
  if(k==3)LS.set('eiq_range',[DAYS[DAYS.length-1],DAYS[DAYS.length-1]]);if(k==4)LS.set('eiq_range',[DAYS[0],DAYS[DAYS.length-1]]);
  if(k==5){Audio8.muted=!Audio8.muted;if(!Audio8.muted&&Game.map)Audio8.play(Game.state=='field'?Game.map.bgm:'title')}}}
@@ -185,3 +185,20 @@ function drawTitle(t){const g=ctx;const gr=g.createLinearGradient(0,0,0,VH);gr.a
 async function boot(){bindPad();requestAnimationFrame(loop);try{const r=await fetch('words.json?'+Date.now());const d=await r.json();WORDS=d.words.filter(w=>w.word&&w.meaning);DAYS=d.days;document.getElementById('ver').textContent=`単語 ${WORDS.length}語 / Day ${DAYS[0]}〜${DAYS[DAYS.length-1]}（${d.updated||''}）`}catch(e){document.getElementById('ver').textContent='単語データを読みこめませんでした';WORDS=[{word:'apple',meaning:'りんご',day:1},{word:'book',meaning:'本',day:1},{word:'cat',meaning:'ねこ',day:1},{word:'dog',meaning:'いぬ',day:1}];DAYS=[1]}
  const st=document.getElementById('start');st.onclick=()=>{Audio8.init();st.remove();title()}}
 boot();
+
+// ---- Monster encyclopedia ----
+function dexStats(){const S=Game.S,L=DEX_LIST();const seen=L.filter(e=>S.dex[e.id]&&S.dex[e.id].seen).length;return{L,seen,pct:Math.floor(seen/L.length*100)}}
+function mastery(grp){const all=WORDS.filter(w=>inGroup(grp,w,DAYS.slice(-3)));if(!all.length)return[0,0];const miss=JSON.parse(localStorage.vqmiss||'{}'),ws=Game.S.wstat||{};const m=all.filter(w=>ws[w.word]&&!miss[w.word]).length;return[m,all.length]}
+function habitat(id){const z=Object.keys(ZONES).filter(k=>ZONES[k].includes(id)).concat(Object.keys(RARES).filter(k=>RARES[k].includes(id)));const u=[...new Set(z)].map(k=>ZONE_NAMES[k]);
+ if(!u.length){const m=Object.values(MAPS).find(m=>m.boss==id);return m?m.name:'？？？'}return u.join('、')}
+function monCanvas(d,size,dark){const[c,g]=mk(64,64);g.save();g.translate(32,34);drawMonster(g,{...d,scale:(d.scale||1)>1.2?.8:.95},0,0,30,false,1);g.restore();if(dark){g.globalCompositeOperation='source-atop';g.fillStyle='#000';g.fillRect(0,0,64,64)}c.style.width=c.style.height=size;c.style.imageRendering='pixelated';return c}
+async function dexMenu(){const S=Game.S;S.dex=S.dex||{};S.dexRw=S.dexRw||[];const{L,seen,pct}=dexStats();
+ for(const[th,it,n,label]of DEX_REWARDS){if(pct>=th&&!S.dexRw.includes(th)){S.dexRw.push(th);if(it)S.inv[it]=(S.inv[it]||0)+n;else S.gold+=n;if(th==100)S.flags.dexmaster=1;await Audio8.jingle('item');await UI.say([`ずかん　${th}％　たっせい！`,`ごほうびに　${label}を　もらった！`])}}
+ return new Promise(res=>{const w=UI.el('dex');const kills=L.reduce((a,e)=>a+((S.dex[e.id]||{}).kill||0),0);
+  w.innerHTML=`<div class="dh"><b>📕 モンスター図鑑</b><span>発見 ${seen}/${L.length}（${pct}%）　たおした数 ${kills}</span><button class="dx">とじる</button></div><div class="dr">ごほうび: ${DEX_REWARDS.map(r=>`<span class="${S.dexRw.includes(r[0])?'got':''}">${r[0]}%</span>`).join(' ')}</div><div class="dg"></div>`;
+  const grid=w.querySelector('.dg');L.forEach((e,i)=>{const d=e.boss?BOSSES[e.id]:ENEMIES[e.id],st=S.dex[e.id];const cell=document.createElement('div');cell.className='dc'+(st?'':' un')+(e.boss?' boss':'')+(d.rare?' rare':'');
+   cell.appendChild(monCanvas(d,'100%',!st));const nm=document.createElement('div');nm.textContent=`${String(i+1).padStart(3,'0')} ${st?d.n:'？？？'}`;cell.appendChild(nm);cell.onclick=()=>{if(st)detail(e,d,i)};grid.appendChild(cell)});
+  const detail=(e,d,i)=>{const st=S.dex[e.id],[mm,mt]=mastery(d.grp);const v=UI.el('dexd');v.innerHTML=`<div class="dt">No.${String(i+1).padStart(3,'0')}　<b>${esc(d.n)}</b>${d.rare?' ✨レア':''}${e.boss?' 👑ボス':''}</div><div class="dd"><div class="dimg"></div><div class="dinfo">
+   HP ${d.hp}　こうげき ${d.atk}　まもり ${d.def>=999?'？？？':d.def}<br>けいけんち ${d.exp}　ゴールド ${d.g}<br>見た数 ${st.seen}　たおした数 ${st.kill}<br>すみか: ${esc(habitat(e.id))}<br>📖 ことば: ${esc(GROUPS[d.grp]||'ぜんぶ')}<br>マスター率: ${mt?Math.round(mm/mt*100):0}%（${mm}/${mt}語）<div class="mbar"><i style="width:${mt?mm/mt*100:0}%"></i></div></div></div><div class="ddesc">${esc(d.desc||'')}</div><div class="qn">▼ タップで もどる</div>`;
+   v.querySelector('.dimg').appendChild(monCanvas(d,'100%'));const h=k=>{if(k=='a'||k=='b')cl();return true};const cl=()=>{Input.pop(h);v.remove()};Input.push(h);v.onclick=cl};
+  const h=k=>{if(k=='b')close();return true};const close=()=>{Input.pop(h);w.remove();res()};Input.push(h);w.querySelector('.dx').onclick=close})}
